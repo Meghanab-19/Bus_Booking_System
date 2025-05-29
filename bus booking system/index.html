@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Booking System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfkit/0.12.3/pdfkit.standalone.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blob-stream/0.1.3/blob-stream.js"></script>
+    <style>
+      * {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f9fd;
+    color: #333;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    color: #0d47a1;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 32px;
+}
+
+.form-group {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #0d47a1;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cfd8dc;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border 0.3s;
+}
+
+input:focus, select:focus {
+    border-color: #1976d2;
+    outline: none;
+}
+
+button {
+    background-color: #1976d2;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background-color: #1565c0;
+}
+
+#confirmation {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #e3f2fd;
+    border-left: 5px solid #1976d2;
+    border-radius: 8px;
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.ticket-info p {
+    margin: 10px 0;
+    font-size: 16px;
+    color: #0d47a1;
+}
+
+#downloadTicket {
+    margin-top: 15px;
+    background-color: #0288d1;
+}
+
+#downloadTicket:hover {
+    background-color: #0277bd;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+    </style>
+</head>
+<body>
+    <h1>Bus Booking System</h1>
+    
+    <div class="form-group">
+        <label for="from">From:</label>
+        <input type="text" id="from" placeholder="Departure city">
+    </div>
+    
+    <div class="form-group">
+        <label for="to">To:</label>
+        <input type="text" id="to" placeholder="Destination city">
+    </div>
+    
+    <div class="form-group">
+        <label for="date">Travel Date:</label>
+        <input type="date" id="date">
+    </div>
+    
+    <div class="form-group">
+        <label for="passengerName">Passenger Name:</label>
+        <input type="text" id="passengerName" placeholder="Your name">
+    </div>
+    
+    <div class="form-group">
+        <label for="seats">Number of Seats:</label>
+        <select id="seats">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+    </div>
+    
+    <button id="bookNow">Book Now</button>
+    
+    <div id="confirmation">
+        <h2>Booking Confirmation</h2>
+        <div class="ticket-info" id="ticketDetails"></div>
+        <button id="downloadTicket">Download Ticket (PDF)</button>
+    </div>
+
+    <script>
+        document.getElementById('bookNow').addEventListener('click', () => {
+            // Get form values
+            const from = document.getElementById('from').value || 'New York';
+            const to = document.getElementById('to').value || 'Boston';
+            const date = document.getElementById('date').value || new Date().toISOString().split('T')[0];
+            const passengerName = document.getElementById('passengerName').value || 'John Doe';
+            const seats = document.getElementById('seats').value;
+            
+            // Generate fake booking data
+            const busNumber = 'BUS-' + Math.floor(1000 + Math.random() * 9000);
+            const bookingId = 'B-' + Math.floor(100000 + Math.random() * 900000);
+            const fare = Math.floor(20 + Math.random() * 50); // $20-$70
+            const totalFare = fare * seats;
+            
+            // Display confirmation
+            document.getElementById('ticketDetails').innerHTML = `
+                <p><strong>Booking ID:</strong> ${bookingId}</p>
+                <p><strong>Passenger:</strong> ${passengerName}</p>
+                <p><strong>Route:</strong> ${from} to ${to}</p>
+                <p><strong>Travel Date:</strong> ${date}</p>
+                <p><strong>Bus Number:</strong> ${busNumber}</p>
+                <p><strong>Seats:</strong> ${seats}</p>
+                <p><strong>Total Fare:</strong> $${totalFare}</p>
+            `;
+            
+            document.getElementById('confirmation').style.display = 'block';
+            
+            // Store data for PDF generation
+            window.currentBooking = {
+                bookingId,
+                passengerName,
+                from,
+                to,
+                date,
+                busNumber,
+                seats,
+                totalFare
+            };
+        });
+        
+        document.getElementById('downloadTicket').addEventListener('click', () => {
+            if (!window.currentBooking) return;
+            
+            const doc = new PDFDocument({ size: 'A6' });
+            const chunks = [];
+            
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => {
+                const blob = new Blob(chunks, { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `BusTicket-${window.currentBooking.bookingId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            });
+            
+            // Simple ticket design
+            doc.fontSize(16).text('BUS TICKET', { align: 'center' });
+            doc.moveDown();
+            doc.fontSize(10).text(`Booking ID: ${window.currentBooking.bookingId}`);
+            doc.moveDown();
+            doc.fontSize(12).text(`Passenger: ${window.currentBooking.passengerName}`);
+            doc.text(`From: ${window.currentBooking.from}`);
+            doc.text(`To: ${window.currentBooking.to}`);
+            doc.text(`Date: ${window.currentBooking.date}`);
+            doc.text(`Bus: ${window.currentBooking.busNumber}`);
+            doc.text(`Seats: ${window.currentBooking.seats}`);
+            doc.text(`Total: $${window.currentBooking.totalFare}`);
+            doc.moveDown();
+            doc.fontSize(8).text('This is a demo ticket only', { align: 'center' });
+            
+            doc.end();
+        });
+    </script>
+</body>
+</html>
